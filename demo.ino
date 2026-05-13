@@ -10,6 +10,40 @@ ST75160i display(SDA_PIN, SCL_PIN, RST_PIN);
 void setup() {
   Serial.begin(115200);
   display.Init();
+  delay(5);
+  display.Clear();
+  display.SayHiVinceAndJack();
+}
+
+
+void test_raw() {
+  display.FillRaw(0x00);
+  delay(50);
+
+  display.SendCmd(0x30);
+  display.SendCmd(0x75);
+  display.SendDataByte(0x00);
+  display.SendDataByte(0x18);
+  display.SendCmd(0x5C);
+
+  // move to page 5, x 10
+  for (int i = 0; i < 5 * 160 + 10; i++) {
+    display.SendDataByte(0x00);
+  }
+
+  // "A" pattern
+  display.SendDataByte(0x20);
+  display.SendDataByte(0x50);
+  display.SendDataByte(0x88);
+  display.SendDataByte(0xF8);
+  display.SendDataByte(0x88);
+  display.SendDataByte(0x88);
+  display.SendDataByte(0x88);
+
+  // fill rest of screen 
+  for (int i = (5 * 160 + 10 + 7); i < 4000; i++) {
+    display.SendDataByte(0x00);
+  }
 }
 
 void test_seq_display() {
@@ -25,5 +59,5 @@ void test_seq_display() {
 }
 
 void loop() {
-  test_seq_display();
+  //test_seq_display();
 }

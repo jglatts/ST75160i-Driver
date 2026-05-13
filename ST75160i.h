@@ -1,3 +1,11 @@
+/**
+*
+*   ST75160i Gray Scale Dot Matrix Driver for Arduino family
+*
+*   Author: John Glatts
+*   Date:   May-12-2026
+*
+*/
 #ifndef __ST75160I_H
 #define __ST75160I_H
 
@@ -10,8 +18,8 @@
 
 #define LCD_W 160
 #define LCD_H 100
-#define LCD_PAGE_ROWS 25   // 100px / 4px per RAM row
-#define LCD_BUF_SIZE 4000
+#define LCD_PAGE_ROWS 25
+#define LCD_BUF_SIZE (LCD_W * LCD_PAGE_ROWS) 	// 4000
 
 typedef struct {
 	uint8_t font_Width;
@@ -21,7 +29,7 @@ typedef struct {
 	uint8_t font_MinChar;
 	uint8_t font_MaxChar;
 	uint8_t font_UnknownChar;
-	uint8_t font_Data[1000];
+	uint8_t font_Data[475];
 } Font_TypeDef;
 
 #define FONT_V 0
@@ -35,10 +43,12 @@ public:
 	void Clear();
 	void Flush();
 
+	void SayHiVinceAndJack();
 	void SetPixel(uint8_t x, uint8_t y, bool on);
 	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* font);
 	uint16_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
 
+	void TestChar(uint8_t x, uint8_t y);
 	void FillScreen(uint8_t d);
 	void FillRaw(uint8_t d);
 	void OnePixelBorder();
