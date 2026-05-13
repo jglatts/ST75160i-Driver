@@ -34,17 +34,10 @@ void ST75160i::SendDataBuffer(const uint8_t* data, uint16_t len) {
 }
 
 void ST75160i::WriteEnable() {
-    SendCmd(0x30);      // Extension Command 1
-
-    SendCmd(0x75);      // Row Address Setting
+    SendCmd(0x75);
     SendDataByte(0x00);
-    SendDataByte(0x18); // 25 RAM rows, 4 pixels each = 100px
-
-    SendCmd(0x15);      // Column Address Setting
-    SendDataByte(0x00);
-    SendDataByte(0x9F); // 160 columns
-
-    SendCmd(0x5C);      // Write display RAM
+    SendDataByte(0x18);
+    SendCmd(0x5C);
 }
 
 void ST75160i::Init() {
@@ -157,6 +150,14 @@ void ST75160i::Flush() {
 void ST75160i::FillScreen(uint8_t d) {
     memset(_buffer, d, sizeof(_buffer));
     Flush();
+}
+
+void ST75160i::FillRaw(uint8_t d) {
+    WriteEnable();
+    for (int i = 0; i < 4000; i++) {
+        SendDataByte(d);
+    }
+    //Flush();
 }
 
 void ST75160i::SetPixel(uint8_t x, uint8_t y, bool on) {

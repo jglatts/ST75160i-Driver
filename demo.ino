@@ -9,18 +9,21 @@ ST75160i display(SDA_PIN, SCL_PIN, RST_PIN);
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
-
-  Serial.println("Init ST75160i...");
   display.Init();
+}
 
+void test_seq_display() {
   display.Clear();
-  display.PutStr(10, 20, "HELLO WORLD", fnt5x7);
-  display.Flush();
-
-  Serial.println("Done");
+  display.FillRaw(0x00);
+  delay(1000);
+  display.FillRaw(0xFF);
+  delay(1000);
+  display.FillRaw(0xAA);
+  delay(1000);
+  display.FillRaw(0x55);  
+  delay(1000);
 }
 
 void loop() {
-  delay(1000);
+  test_seq_display();
 }

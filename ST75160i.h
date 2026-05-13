@@ -11,7 +11,7 @@
 #define LCD_W 160
 #define LCD_H 100
 #define LCD_PAGE_ROWS 25   // 100px / 4px per RAM row
-#define LCD_BUF_SIZE (LCD_W * LCD_PAGE_ROWS)
+#define LCD_BUF_SIZE 4000
 
 typedef struct {
 	uint8_t font_Width;
@@ -40,6 +40,7 @@ public:
 	uint16_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
 
 	void FillScreen(uint8_t d);
+	void FillRaw(uint8_t d);
 	void OnePixelBorder();
 
 	void SendCmd(uint8_t cmd);
