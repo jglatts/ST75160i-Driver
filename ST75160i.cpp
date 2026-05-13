@@ -7,6 +7,7 @@
 * 
 */
 #include "st75160i.h"
+#include "simple_font.h"
 
 ST75160i::ST75160i(uint8_t sda, uint8_t scl, uint8_t rst) {
     _sda = sda;
@@ -173,7 +174,53 @@ void ST75160i::FillRaw(uint8_t d) {
     for (int i = 0; i < 4000; i++) {
         SendDataByte(d);
     }
-    //Flush();
+}
+
+void ST75160i::PutCharNew(uint8_t x, uint8_t y, char ch, uint8_t scale) {
+    const SimpleFontChar* fc = nullptr;
+
+    for (uint8_t i = 0; i < simpleFontCount; i++) {
+        if (simpleFont[i].c == ch) {
+            fc = &simpleFont[i];
+            break;
+        }
+    }
+
+    if (!fc) return;
+
+    for (uint8_t row = 0; row < 7; row++) {
+        uint8_t col = 0;
+        while (fc->rows[row][col] != '\0') {
+            if (fc->rows[row][col] == '1') {
+                for (uint8_t sx = 0; sx < scale; sx++) {
+                    for (uint8_t sy = 0; sy < scale; sy++) {
+                        SetPixel(
+                            x + (col * scale) + sx,
+                            y + (row * scale) + sy,
+                            true
+                        );
+                    }
+                }
+            }
+            col++;
+        }
+    }
+}
+
+void ST75160i::PutStrNew(uint8_t x, uint8_t y, const char* str, uint8_t scale) {
+    uint8_t cursorX = x;
+
+    while (*str) {
+        if (*str == '\n') {
+            y += (8 * scale);
+            cursorX = x;
+            str++;
+            continue;
+        }
+        PutCharNew(cursorX, y, *str, scale);
+        cursorX += (6 * scale);
+        str++;
+    }
 }
 
 void ST75160i::SayHiVinceAndJack() {
@@ -215,8 +262,6 @@ void ST75160i::SayHiVinceAndJack() {
         SendDataByte(0x00);
     }
 
-    // line 1
-    // AND JACK
     writeChar(A, 5);
     writeChar(N, 5);
     writeChar(D, 5);
@@ -233,8 +278,6 @@ void ST75160i::SayHiVinceAndJack() {
         SendDataByte(0x00);
     }
 
-    // line 2
-    // HI VINCE
     writeChar(H, 5);
     writeChar(I, 5);
     for (int i = 0; i < 6; i++) SendDataByte(0x00);
@@ -258,10 +301,10 @@ void ST75160i::SetPixel(uint8_t x, uint8_t y, bool on) {
 
     uint8_t bit;
     switch (y & 0x03) {
-    case 0: bit = 0x11; break;
-    case 1: bit = 0x22; break;
-    case 2: bit = 0x44; break;
-    default: bit = 0x88; break;
+        case 0: bit = 0x11; break;
+        case 1: bit = 0x22; break;
+        case 2: bit = 0x44; break;
+        default: bit = 0x88; break;
     }
 
     if (on) {

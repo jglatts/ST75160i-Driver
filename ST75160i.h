@@ -48,6 +48,9 @@ public:
 	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* font);
 	uint16_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
 
+	void PutCharNew(uint8_t x, uint8_t y, char ch, uint8_t scale);
+	void PutStrNew(uint8_t x, uint8_t y, const char* str, uint8_t scale);
+
 	void TestChar(uint8_t x, uint8_t y);
 	void FillScreen(uint8_t d);
 	void FillRaw(uint8_t d);

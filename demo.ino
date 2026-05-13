@@ -46,6 +46,14 @@ void test_raw() {
   }
 }
 
+void test_new_str() {
+    lcd.Clear();
+
+    lcd.PutStrNew(10, 10, "HI VINCE\nAND JACK", 3);
+
+    lcd.Flush();
+}
+
 void test_seq_display() {
   display.Clear();
   display.FillRaw(0x00);
