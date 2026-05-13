@@ -23,22 +23,14 @@ void ST75160i::SendDataByte(uint8_t data) {
 }
 
 void ST75160i::SendDataBuffer(const uint8_t* data, uint16_t len) {
-    const uint8_t chunk = 28;
+    Wire.beginTransmission(ST75160I_ADDR);
+    Wire.write(ST75160I_DATA);
 
-    while (len) {
-        uint8_t n = (len > chunk) ? chunk : len;
-
-        Wire.beginTransmission(ST75160I_ADDR);
-        Wire.write(ST75160I_DATA);
-
-        for (uint8_t i = 0; i < n; i++) {
-            Wire.write(*data++);
-        }
-
-        Wire.endTransmission();
-
-        len -= n;
+    for (uint16_t i = 0; i < len; i++) {
+        Wire.write(*data++);
     }
+
+    Wire.endTransmission();
 }
 
 void ST75160i::WriteEnable() {
