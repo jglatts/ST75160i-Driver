@@ -78,7 +78,7 @@ void demo_with_buttons() {
   }
 
   if (!digitalRead(BTN_DISPLAY_IMAGES)) {
-    test_display_loop();
+    draw_display();
   }
 
   if (!digitalRead(BTN_HI_VINCE_JACK)) {
