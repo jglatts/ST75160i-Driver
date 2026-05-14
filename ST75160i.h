@@ -50,6 +50,7 @@ public:
 
 	void PutCharNew(uint8_t x, uint8_t y, char ch, uint8_t scale);
 	void PutStrNew(uint8_t x, uint8_t y, const char* str, uint8_t scale);
+	void PutImage(const unsigned char* image, uint8_t pages, uint8_t imgCols);
 
 	void TestChar(uint8_t x, uint8_t y);
 	void FillScreen(uint8_t d);

@@ -1,5 +1,6 @@
 #include "st75160i.h"
 #include "font5x7.h"
+#include "logos.h"
 
 #define SDA_PIN 21
 #define SCL_PIN 22
@@ -12,9 +13,14 @@ void setup() {
   display.Init();
   delay(5);
   display.Clear();
-  display.SayHiVinceAndJack();
-}
+  Serial.print("ZAXIS bytes: ");
+  Serial.println(sizeof(ZAXIS_Logo_2));
+  Serial.print("NHD bytes: ");
+  Serial.println(sizeof(NHD_Logo));
 
+  display.FillRaw(0x00);
+  display.PutImage(ZAXIS_Testing_Logo, 12, 160);
+}
 
 void test_raw() {
   display.FillRaw(0x00);
@@ -47,11 +53,9 @@ void test_raw() {
 }
 
 void test_new_str() {
-    lcd.Clear();
-
-    lcd.PutStrNew(10, 10, "HI VINCE\nAND JACK", 3);
-
-    lcd.Flush();
+    display.Clear();
+    display.PutStrNew(10, 10, "HI", 1);
+    display.Flush();
 }
 
 void test_seq_display() {
@@ -67,5 +71,15 @@ void test_seq_display() {
 }
 
 void loop() {
-  //test_seq_display();
+  /*
+  display.FillRaw(0x00);
+  display.PutImage(NHD_Logo, 12, 160);
+  delay(2000);
+  display.FillRaw(0x00);
+  display.PutImage(ZAXIS_Logo_3, 12, 160);
+  delay(2000);
+  display.Clear();
+  display.Flush();
+  delay(100);
+  */
 }

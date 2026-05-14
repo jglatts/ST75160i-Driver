@@ -1,13 +1,14 @@
 /**
 *
 *   ST75160i Gray Scale Dot Matrix Driver for Arduino family
-* 
+*
 *   Author: John Glatts
 *   Date:   May-12-2026
-* 
+*
 */
 #include "st75160i.h"
 #include "simple_font.h"
+#include "logos.h"
 
 ST75160i::ST75160i(uint8_t sda, uint8_t scl, uint8_t rst) {
     _sda = sda;
@@ -301,10 +302,10 @@ void ST75160i::SetPixel(uint8_t x, uint8_t y, bool on) {
 
     uint8_t bit;
     switch (y & 0x03) {
-        case 0: bit = 0x11; break;
-        case 1: bit = 0x22; break;
-        case 2: bit = 0x44; break;
-        default: bit = 0x88; break;
+    case 0: bit = 0x11; break;
+    case 1: bit = 0x22; break;
+    case 2: bit = 0x44; break;
+    default: bit = 0x88; break;
     }
 
     if (on) {
@@ -365,6 +366,17 @@ uint16_t ST75160i::PutStr(uint8_t x, uint8_t y, const char* str, const Font_Type
     return x - startX;
 }
 
+void ST75160i::PutImage(const unsigned char* image, uint8_t pages, uint8_t imgCols) {
+    WriteEnable();
+    const unsigned char* p = image;
+    for (uint8_t page = 0; page < 12; page++) {
+        // actual image data
+        for (uint8_t col = 0; col < 160; col++) {
+            SendDataByte(*p++);
+        }
+    }
+}
+
 void ST75160i::OnePixelBorder() {
     Clear();
 
@@ -396,3 +408,4 @@ void ST75160i::OnePixelBorder() {
         }
     }
 }
+
