@@ -2,6 +2,11 @@
 *
 *   ST75160i Gray Scale Dot Matrix Driver for Arduino family
 *
+*   ToDo:
+*       Get VRAM buffer support working
+*       Right now, every pixel change is sent immediately to the display, which is very slow. 
+        Instead, we should be able to write to a local buffer and then flush it to the display in one go.
+
 *   Author: John Glatts
 *   Date:   May-12-2026
 *

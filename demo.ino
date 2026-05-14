@@ -10,6 +10,7 @@ ST75160i display(SDA_PIN, SCL_PIN, RST_PIN);
 
 void setup() {
   Serial.begin(115200);
+  pinMode(13, INPUT_PULLUP);
   display.Init();
   delay(5);
   display.FillRaw(0x00);
@@ -28,18 +29,26 @@ void test_seq_display() {
 }
 
 void test_display_loop() {
-  display.FillRaw(0x00);
   display.PutImage(ZAXIS_Testing_Logo, 12, 160);	
-  delay(2000);
-  display.FillRaw(0xFF);
-  delay(100);
+  delay(1000);
+  /*
+  display.FillRaw(0x50);
+  delay(50);
   display.FillRaw(0xAA);
-  delay(100);
-  display.FillRaw(0x55);
+  delay(50);
+  display.FillRaw(0x00);
+  */
   display.PutImage(ZAXIS_Testing_Passed_Logo, 12, 160);	
-  delay(2000);
+  delay(1000);
 }
 
 void loop() {
-  test_display_loop();
+  // note we INIT if the FFC is inserted after MCU is on
+  if (!digitalRead(13)) {
+    display.Init();
+    delay(5);
+    display.FillRaw(0x00);
+    test_display_loop();
+  }
+  delay(10);
 }
