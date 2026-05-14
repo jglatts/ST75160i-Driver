@@ -37,6 +37,19 @@ void ST75160i::SendDataByte(uint8_t data) {
     delayMicroseconds(100);
 }
 
+bool ST75160i::IsConnected() {
+    Wire.beginTransmission(ST75160I_ADDR);
+    return Wire.endTransmission() == 0;
+}
+
+bool ST75160i::EnsureReady() {
+    if (!IsConnected()) {
+        return false;
+    }
+
+    return true;
+}
+
 void ST75160i::SendDataBuffer(const uint8_t* data, uint16_t len) {
     const uint8_t chunk = 28;
 

@@ -43,6 +43,9 @@ public:
 	void Clear();
 	void Flush();
 
+	bool IsConnected();
+	bool EnsureReady();
+
 	void SayHiVinceAndJack();
 	void SetPixel(uint8_t x, uint8_t y, bool on);
 	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* font);
