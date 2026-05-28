@@ -4,7 +4,7 @@
 *
 *   ToDo:
 *       Get VRAM buffer support working
-*       Right now, every pixel change is sent immediately to the display, which is very slow. 
+*       Right now, every pixel change is sent immediately to the display, which is very slow.
         Instead, we should be able to write to a local buffer and then flush it to the display in one go.
 
 *   Author: John Glatts
@@ -14,6 +14,20 @@
 #include "st75160i.h"
 #include "simple_font.h"
 #include "logos.h"
+
+static const uint32_t GS_LUT[] = {
+  0x00000000, 0x01000000, 0x00010000, 0x01010000,
+  0x00000100, 0x01000100, 0x00010100, 0x01010100,
+  0x00000001, 0x01000001, 0x00010001, 0x01010001,
+  0x00000101, 0x01000101, 0x00010101, 0x01010101
+};
+
+static const uint32_t POC_LUT[] = {
+  0xFEFEFEFE, 0xFDFDFDFD, 0xFBFBFBFB, 0xF7F7F7F7,
+  0xEFEFEFEF, 0xDFDFDFDF, 0xBFBFBFBF, 0x7F7F7F7F
+};
+
+static uint8_t vRAM[LCD_BUF_SIZE] __attribute__((aligned(4)));
 
 ST75160i::ST75160i(uint8_t sda, uint8_t scl, uint8_t rst) {
     _sda = sda;
@@ -40,14 +54,6 @@ void ST75160i::SendDataByte(uint8_t data) {
 bool ST75160i::IsConnected() {
     Wire.beginTransmission(ST75160I_ADDR);
     return Wire.endTransmission() == 0;
-}
-
-bool ST75160i::EnsureReady() {
-    if (!IsConnected()) {
-        return false;
-    }
-
-    return true;
 }
 
 void ST75160i::SendDataBuffer(const uint8_t* data, uint16_t len) {
@@ -78,7 +84,7 @@ void ST75160i::WriteEnable() {
 
 void ST75160i::Init() {
     Wire.begin(_sda, _scl);
-    Wire.setClock(100000);
+    Wire.setClock(400000);
 
     pinMode(_rst, OUTPUT);
     digitalWrite(_rst, LOW);
@@ -171,20 +177,35 @@ void ST75160i::Init() {
 
     delay(20);
     Clear();
-    Flush();
+
+    //Flush();
 }
 
 void ST75160i::Clear() {
-    memset(_buffer, 0x00, sizeof(_buffer));
+    memset(vRAM, 0x00, sizeof(vRAM));
 }
 
 void ST75160i::Flush() {
-    WriteEnable();
-    SendDataBuffer(_buffer, LCD_BUF_SIZE);
+    SendCmd(0x30);
+
+    // Column range: 0 to 159
+    SendCmd(0x15);
+    SendDataByte(0x00);
+    SendDataByte(0x9F);
+
+    // Row/page range: 0 to 24
+    SendCmd(0x75);
+    SendDataByte(0x00);
+    SendDataByte(0x18);
+
+    // RAM write
+    SendCmd(0x5C);
+
+    SendDataBuffer(vRAM, 4000);
 }
 
 void ST75160i::FillScreen(uint8_t d) {
-    memset(_buffer, d, sizeof(_buffer));
+    memset(vRAM, d, sizeof(vRAM));
     Flush();
 }
 
@@ -192,53 +213,6 @@ void ST75160i::FillRaw(uint8_t d) {
     WriteEnable();
     for (int i = 0; i < 4000; i++) {
         SendDataByte(d);
-    }
-}
-
-void ST75160i::PutCharNew(uint8_t x, uint8_t y, char ch, uint8_t scale) {
-    const SimpleFontChar* fc = nullptr;
-
-    for (uint8_t i = 0; i < simpleFontCount; i++) {
-        if (simpleFont[i].c == ch) {
-            fc = &simpleFont[i];
-            break;
-        }
-    }
-
-    if (!fc) return;
-
-    for (uint8_t row = 0; row < 7; row++) {
-        uint8_t col = 0;
-        while (fc->rows[row][col] != '\0') {
-            if (fc->rows[row][col] == '1') {
-                for (uint8_t sx = 0; sx < scale; sx++) {
-                    for (uint8_t sy = 0; sy < scale; sy++) {
-                        SetPixel(
-                            x + (col * scale) + sx,
-                            y + (row * scale) + sy,
-                            true
-                        );
-                    }
-                }
-            }
-            col++;
-        }
-    }
-}
-
-void ST75160i::PutStrNew(uint8_t x, uint8_t y, const char* str, uint8_t scale) {
-    uint8_t cursorX = x;
-
-    while (*str) {
-        if (*str == '\n') {
-            y += (8 * scale);
-            cursorX = x;
-            str++;
-            continue;
-        }
-        PutCharNew(cursorX, y, *str, scale);
-        cursorX += (6 * scale);
-        str++;
     }
 }
 
@@ -313,45 +287,140 @@ void ST75160i::SayHiVinceAndJack() {
     }
 }
 
-void ST75160i::SetPixel(uint8_t x, uint8_t y, bool on) {
-    if (x >= LCD_W || y >= LCD_H) return;
+void ST75160i::SetPixel(uint8_t X, uint8_t Y, uint8_t GS) {
+    if (X >= LCD_W || Y >= LCD_ACTIVE_H) return;
 
-    uint16_t index = ((y / 4) * LCD_W) + x;
+    uint8_t page = Y >> 2;        // 4 vertical pixels per byte
+    uint8_t bitPair = Y & 0x03;   // pixel within that byte
 
-    uint8_t bit;
-    switch (y & 0x03) {
-    case 0: bit = 0x11; break;
-    case 1: bit = 0x22; break;
-    case 2: bit = 0x44; break;
-    default: bit = 0x88; break;
-    }
+    uint16_t byteIndex = (page * LCD_W) + X;
+    if (byteIndex >= LCD_BUF_SIZE) return;
 
-    if (on) {
-        _buffer[index] |= bit;
-    }
-    else {
-        _buffer[index] &= ~bit;
-    }
+    uint8_t px = (GS > 0) ? 0x03 : 0x00;
+
+    // try top pixel in highest bits first
+    uint8_t shift = (3 - bitPair) * 2;
+
+    vRAM[byteIndex] &= ~(0x03 << shift);
+    vRAM[byteIndex] |= (px << shift);
 }
 
-uint8_t ST75160i::PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* font) {
-    if (ch < font->font_MinChar || ch > font->font_MaxChar) {
-        ch = font->font_UnknownChar;
-    }
 
-    const uint8_t* p = &font->font_Data[(ch - font->font_MinChar) * font->font_BPC];
+uint8_t ST75160i::PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* Font) {
+    uint8_t pX;
+    uint8_t pY;
+    uint8_t tmpCh;
+    uint8_t bL;
+    const uint8_t* pCh;
 
-    for (uint8_t col = 0; col < font->font_Width; col++) {
-        uint8_t line = *p++;
-        for (uint8_t row = 0; row < font->font_Height; row++) {
-            if (line & 0x01) {
-                SetPixel(x + col, y + row, true);
+    int lcd_color = 0XFF;
+
+    // If the specified character code is out of bounds should substitute the code of the "unknown" character
+    if ((ch < Font->font_MinChar) || (ch > Font->font_MaxChar)) ch = Font->font_UnknownChar;
+
+    // Pointer to the first byte of character in font data array
+    // Uses ASCII math to the get the pointer to the font data array
+    // see https://www.asciitable.com/ for table
+    // i.e, for letter 'a' --> (97 - 32) * 5 = element 325
+    pCh = &Font->font_Data[(ch - Font->font_MinChar) * Font->font_BPC];
+    Serial.print("pCh = 0x");
+    Serial.println(*pCh, HEX);
+
+    // Draw character
+    if (Font->font_Scan == FONT_V) {
+        // Vertical pixels order
+        if (Font->font_Height < 9) {
+            // Height is 8 pixels or less (one byte per column)
+            pX = x;
+            while (pX < x + Font->font_Width) {
+                pY = y;
+                tmpCh = *pCh++;
+                while (tmpCh) {
+                    if (tmpCh & 0x01) SetPixel(pX, pY, lcd_color);
+                    tmpCh >>= 1;
+                    pY++;
+                }
+                pX++;
             }
-            line >>= 1;
+        }
+        else {
+            // Height is more than 8 pixels (several bytes per column)
+            pX = x;
+            while (pX < y + Font->font_Width) {
+                pY = y;
+                while (pY < y + Font->font_Height) {
+                    bL = 8;
+                    tmpCh = *pCh++;
+                    if (tmpCh) {
+                        while (bL) {
+                            if (tmpCh & 0x01) SetPixel(pX, pY, lcd_color);
+                            tmpCh >>= 1;
+                            if (tmpCh) {
+                                pY++;
+                                bL--;
+                            }
+                            else {
+                                pY += bL;
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        pY += bL;
+                    }
+                }
+                pX++;
+            }
+        }
+    }
+    else {
+        // Horizontal pixels order
+        if (Font->font_Width < 9) {
+            // Width is 8 pixels or less (one byte per row)
+            pY = y;
+            while (pY < y + Font->font_Height) {
+                pX = x;
+                tmpCh = *pCh++;
+                while (tmpCh) {
+                    if (tmpCh & 0x01) SetPixel(pX, pY, lcd_color);
+                    tmpCh >>= 1;
+                    pX++;
+                }
+                pY++;
+            }
+        }
+        else {
+            // Width is more than 8 pixels (several bytes per row)
+            pY = y;
+            while (pY < y + Font->font_Height) {
+                pX = x;
+                while (pX < x + Font->font_Width) {
+                    bL = 8;
+                    tmpCh = *pCh++;
+                    if (tmpCh) {
+                        while (bL) {
+                            if (tmpCh & 0x01) SetPixel(pX, pY, lcd_color);
+                            tmpCh >>= 1;
+                            if (tmpCh) {
+                                pX++;
+                                bL--;
+                            }
+                            else {
+                                pX += bL;
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        pX += bL;
+                    }
+                }
+                pY++;
+            }
         }
     }
 
-    return font->font_Width + 1;
+    return Font->font_Width + 1;
 }
 
 void ST75160i::TestChar(uint8_t x, uint8_t y) {
@@ -374,7 +443,7 @@ void ST75160i::TestChar(uint8_t x, uint8_t y) {
     }
 }
 
-uint16_t ST75160i::PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font) {
+uint8_t ST75160i::PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font) {
     uint8_t startX = x;
 
     while (*str) {
@@ -399,6 +468,8 @@ void ST75160i::OnePixelBorder() {
     Clear();
 
     WriteEnable();
+
+    // top border - left to right
     for (int x = 0; x < 160; x++) {
         if (x == 0 || x == 159) {
             SendDataByte(0xFF);
@@ -407,6 +478,8 @@ void ST75160i::OnePixelBorder() {
             SendDataByte(0x80);
         }
     }
+
+    // left border - top to bottom
     for (int y = 0; y < 11; y++) {
         for (int i = 0; i < 160; i++) {
             if (i == 0 || i == 159) {

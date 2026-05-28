@@ -17,9 +17,17 @@
 #define ST75160I_DATA 0x40
 
 #define LCD_W 160
-#define LCD_H 100
-#define LCD_PAGE_ROWS 25
-#define LCD_BUF_SIZE (LCD_W * LCD_PAGE_ROWS) 	// 4000
+#define LCD_H 128
+#define LCD_ACTIVE_H 100
+#define LCD_PAGES 13
+#define LCD_PAGE_WIDTH 160
+#define LCD_PAGE_BYTES (LCD_PAGE_WIDTH * 4)
+#define LCD_BUF_SIZE 4000
+
+#define SCR_ORIENT_NORMAL 0x01
+#define SCR_ORIENT_180    0x02
+#define SCR_ORIENT_CW     0x04
+#define SCR_ORIENT_CCW    0x08
 
 typedef struct {
 	uint8_t font_Width;
@@ -44,15 +52,12 @@ public:
 	void Flush();
 
 	bool IsConnected();
-	bool EnsureReady();
 
 	void SayHiVinceAndJack();
-	void SetPixel(uint8_t x, uint8_t y, bool on);
-	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* font);
-	uint16_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
+	void SetPixel(uint8_t x, uint8_t y, uint8_t GS);
+	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* Font);
+	uint8_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
 
-	void PutCharNew(uint8_t x, uint8_t y, char ch, uint8_t scale);
-	void PutStrNew(uint8_t x, uint8_t y, const char* str, uint8_t scale);
 	void PutImage(const unsigned char* image, uint8_t pages, uint8_t imgCols);
 
 	void TestChar(uint8_t x, uint8_t y);
@@ -65,7 +70,7 @@ public:
 
 private:
 	uint8_t _sda, _scl, _rst;
-	uint8_t _buffer[LCD_BUF_SIZE];
+	uint8_t _orientation = SCR_ORIENT_CW;
 
 	void WriteEnable();
 	void SendDataBuffer(const uint8_t* data, uint16_t len);
