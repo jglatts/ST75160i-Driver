@@ -37,7 +37,7 @@ typedef struct {
 	uint8_t font_MinChar;
 	uint8_t font_MaxChar;
 	uint8_t font_UnknownChar;
-	uint8_t font_Data[475];
+	uint8_t font_Data[100];
 } Font_TypeDef;
 
 #define FONT_V 0

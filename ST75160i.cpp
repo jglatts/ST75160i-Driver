@@ -290,21 +290,24 @@ void ST75160i::SayHiVinceAndJack() {
 void ST75160i::SetPixel(uint8_t X, uint8_t Y, uint8_t GS) {
     if (X >= LCD_W || Y >= LCD_ACTIVE_H) return;
 
-    uint8_t page = Y >> 2;        // 4 vertical pixels per byte
-    uint8_t bitPair = Y & 0x03;   // pixel within that byte
+    // vertical flip only
+    Y = (LCD_ACTIVE_H - 1) - Y;
+
+    uint8_t page = Y >> 3;
+    uint8_t bit = Y & 0x07;
 
     uint16_t byteIndex = (page * LCD_W) + X;
     if (byteIndex >= LCD_BUF_SIZE) return;
 
-    uint8_t px = (GS > 0) ? 0x03 : 0x00;
+    uint8_t mask = 1 << (7 - bit);
 
-    // try top pixel in highest bits first
-    uint8_t shift = (3 - bitPair) * 2;
-
-    vRAM[byteIndex] &= ~(0x03 << shift);
-    vRAM[byteIndex] |= (px << shift);
+    if (GS > 0) {
+        vRAM[byteIndex] |= mask;
+    }
+    else {
+        vRAM[byteIndex] &= ~mask;
+    }
 }
-
 
 uint8_t ST75160i::PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* Font) {
     uint8_t pX;
@@ -323,8 +326,8 @@ uint8_t ST75160i::PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* 
     // see https://www.asciitable.com/ for table
     // i.e, for letter 'a' --> (97 - 32) * 5 = element 325
     pCh = &Font->font_Data[(ch - Font->font_MinChar) * Font->font_BPC];
-    Serial.print("pCh = 0x");
-    Serial.println(*pCh, HEX);
+    //Serial.print("pCh = 0x");
+    //Serial.println(*pCh, HEX);
 
     // Draw character
     if (Font->font_Scan == FONT_V) {
