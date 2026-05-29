@@ -186,7 +186,7 @@ void ST75160i::Clear() {
 }
 
 void ST75160i::Flush() {
-    SendCmd(0x30);
+    SendCmd(0x30);  // 00110000
 
     // Column range: 0 to 159
     SendCmd(0x15);
@@ -441,6 +441,16 @@ void ST75160i::TestChar(uint8_t x, uint8_t y) {
         for (uint8_t col = 0; col < 5; col++) {
             if (rows[row][col] == '1') {
                 SetPixel(x + col, y + row, true);
+            }
+        }
+    }
+}
+
+void ST75160i::drawBitmap16x16(uint8_t x, uint8_t y, const uint16_t* bmp, uint8_t gs = 15) {
+    for (uint8_t row = 0; row < 16; row++) {
+        for (uint8_t col = 0; col < 16; col++) {
+            if (bmp[row] & (0x8000 >> col)) {
+                SetPixel(x + col, y + row, gs);
             }
         }
     }

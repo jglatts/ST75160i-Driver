@@ -37,7 +37,7 @@ typedef struct {
 	uint8_t font_MinChar;
 	uint8_t font_MaxChar;
 	uint8_t font_UnknownChar;
-	uint8_t font_Data[100];
+	uint8_t font_Data[1000];
 } Font_TypeDef;
 
 #define FONT_V 0
@@ -58,6 +58,7 @@ public:
 	uint8_t PutChar(uint8_t x, uint8_t y, uint8_t ch, const Font_TypeDef* Font);
 	uint8_t PutStr(uint8_t x, uint8_t y, const char* str, const Font_TypeDef* font);
 
+	void drawBitmap16x16(uint8_t x, uint8_t y, const uint16_t* bmp, uint8_t gs = 15);
 	void PutImage(const unsigned char* image, uint8_t pages, uint8_t imgCols);
 
 	void TestChar(uint8_t x, uint8_t y);
