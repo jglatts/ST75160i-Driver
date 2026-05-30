@@ -1,20 +1,61 @@
-# ST75160i-Driver
+# ST75160i Driver
 
 Arduino / ESP32 driver for the Newhaven Display `NHD-C160100DiZ-FSW-FBW Rev1C` LCD using the `ST75160i` controller over I2C.
 
-This driver was written after discovering the newer Rev1C modules are not firmware compatible with older `ST7528i` based displays.
+This project was created after discovering that newer Rev1C modules are not firmware compatible with older versions of the display that used the `ST7528i` controller. While the display retained the same part number, the controller architecture, initialization sequence, and memory organization changed significantly.
+
+The goal of this project is to provide a lightweight, easy-to-understand driver for ESP32 and Arduino-based projects using the newer ST75160i-based displays.
 
 ---
 
-## Hardware
+## Features
 
-### Display
+* I2C interface
+* Framebuffer-based graphics rendering
+* Pixel drawing
+* Text rendering using bitmap fonts
+* Image display support
+* ESP32 compatible
+* Open and easy-to-modify codebase
+
+---
+
+## Supported Display
+
+### Newhaven Display
 
 `NHD-C160100DiZ-FSW-FBW Rev1C`
 
+Controller:
+
+```text
+ST75160i
+```
+
+Resolution:
+
+```text
+160 x 100 pixels
+```
+
+Interface:
+
+```text
+I2C
+```
+
+---
+
+## Tested Hardware
+
 ### MCU
 
-`ESP32 Dev Board`
+* ESP32 DevKit
+* ESP32-WROOM
+
+### Display
+
+* NHD-C160100DiZ-FSW-FBW Rev1C
 
 ---
 
@@ -30,13 +71,11 @@ This driver was written after discovering the newer Rev1C modules are not firmwa
 
 ---
 
-## Notes
+## Important Notes
 
-The display is 3.3V logic only.
+### Hardware Reset Required
 
-Using an Arduino Mega directly caused issues due to 5V pullups on the I2C bus. ESP32 worked properly with 3.3V pullups and hardware reset handling.
-
-The display also requires a proper reset pulse during initialization:
+The ST75160i requires a proper reset sequence before initialization.
 
 ```cpp
 digitalWrite(rst, LOW);
@@ -46,48 +85,134 @@ digitalWrite(rst, HIGH);
 delay(200);
 ```
 
+Skipping the reset sequence can result in unreliable startup behavior.
+
 ---
 
 ## ST7528i vs ST75160i
 
-Older revisions of this display used the `ST7528i` controller.
+Older versions of the display used the Sitronix ST7528i controller.
 
-Rev1C uses:
+Although the display part number remained nearly identical, the newer Rev1C modules use the ST75160i controller.
 
-```text
-ST75160i
-```
-
-The newer controller uses:
+Key differences include:
 
 * Different initialization sequence
-* OTP loading during startup
+* Different analog power configuration
 * Different RAM addressing
-* Different framebuffer format
-* Different analog / booster configuration
+* Different framebuffer organization
+* Different startup and OTP loading behavior
 
-The original ST7528i driver would communicate over I2C correctly, but produced corrupted or random pixel output.
+Because of these differences, existing ST7528i firmware may communicate successfully over I2C while still producing corrupted or unusable graphics output.
 
 ---
 
-## Framebuffer Format
+## Framebuffer Organization
 
-Current framebuffer format:
+The ST75160i implementation in this project uses a local framebuffer that is flushed to the display as a single transfer.
 
-```text
-1 byte = 4 vertical pixels
-```
-
-Bit layout:
+Framebuffer size:
 
 ```text
-0x80 = row 0
-0x40 = row 1
-0x20 = row 2
-0x10 = row 3
+4000 bytes
 ```
 
+Display resolution:
 
+```text
+160 x 100 pixels
+```
+
+Pixel mapping:
+
+```text
+1 byte = 8 vertical pixels
+```
+
+Example:
+
+```text
+Bit 7 = Y + 0
+Bit 6 = Y + 1
+Bit 5 = Y + 2
+Bit 4 = Y + 3
+Bit 3 = Y + 4
+Bit 2 = Y + 5
+Bit 1 = Y + 6
+Bit 0 = Y + 7
+```
+
+This organization allows efficient rendering while maintaining compatibility with the controller's internal memory layout.
+
+---
+
+## Example
+
+```cpp
+#include "st75160i.h"
+#include "font5x7.h"
+
+ST75160i display(21, 22, 23);
+
+void setup() {
+    display.Init();
+
+    display.Clear();
+
+    display.PutStr(10, 20, "HELLO WORLD", fnt5x7);
+
+    for (int x = 0; x < 160; x++) {
+        display.SetPixel(x, 0, 1);
+        display.SetPixel(x, 99, 1);
+    }
+
+    display.Flush();
+}
+
+void loop() {
+}
+```
+
+---
+
+## Example Animation
+
+```cpp
+void DancingText() {
+    const char* msg = "HELLO JOHN";
+
+    for (int frame = 0; frame < 100; frame++) {
+
+        display.Clear();
+
+        for (uint8_t i = 0; msg[i]; i++) {
+
+            int wave = (frame + i * 3) % 16;
+
+            uint8_t yOffset =
+                (wave < 8) ? wave : (16 - wave);
+
+            display.PutChar(
+                20 + (i * 8),
+                40 + yOffset,
+                msg[i],
+                fnt5x7
+            );
+        }
+
+        display.Flush();
+        delay(50);
+    }
+}
+```
+
+---
+
+## Development Notes
+
+One of the more interesting challenges during development was discovering that the display's memory organization differed significantly from the older ST7528i implementation. Initial assumptions about grayscale memory packing and page layout proved incorrect, requiring reverse engineering of the controller behavior through direct RAM writes and framebuffer experiments.
+
+The final driver uses a framebuffer approach that dramatically improves rendering performance compared to writing individual pixels directly over I2C.
 
 ---
 
@@ -104,3 +229,9 @@ https://support.newhavendisplay.com/hc/en-us/articles/25842742613911-NHD-C160100
 ### Datasheet
 
 https://newhavendisplay.com/content/specs/NHD-C160100DiZ-FSW-FBW.pdf
+
+---
+
+## License
+
+MIT License
